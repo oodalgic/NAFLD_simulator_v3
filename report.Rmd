@@ -1,0 +1,309 @@
+---
+title: "NASH Simulator"
+fontsize: 10pt
+geometry: margin=0.4in,a4paper,bottom=0.0in
+output: 
+  pdf_document:
+    includes:
+      in_header: reportstyle.sty
+params:
+  stage: "F3"
+  age: 50
+  gender: "Female"
+---
+
+\vskip -8pt
+\thispagestyle{empty}
+
+\AddToShipoutPictureFG*{
+  \AtPageUpperLeft{
+    \put(\LenToUnit{0in},\LenToUnit{-1.6in}){
+      \begin{minipage}[t]{\textwidth}
+        \begin{flushleft}
+        \tikz\node[opacity=0.05]{\includegraphics[height=1.2in]{Liver-image-gs}};\\
+        \end{flushleft}
+      \end{minipage}
+    }
+  }
+}
+\begin{center}
+\vskip -18pt
+\normalsize{\color{blue}\underline{\smash{\url{www.NASHsimulator.org}}}}
+\end{center}
+\vskip 15pt
+\begin{minipage}[t]{\textwidth}
+
+\begin{center}
+\begin{tcolorbox}[colback=mist!25,arc=5pt]
+
+\textbf{Summary}:  This is the report from \textit{NASH Simulator} for \textbf{`r params$age`-year-old and `r tolower(params$gender)` NALFD/NASH patients who are currently at 
+`r  if(length(params$stage)>2){paste(paste(params$stage[1:(length(params$stage)-1)],collapse=", "),", and ", params$stage[length(params$stage)], " stages",sep="")}``r if(length(params$stage)==2){paste(paste(params$stage[1:(length(params$stage)-1)],collapse=", ")," and ", params$stage[length(params$stage)], " stages",sep="")}``r if(length(params$stage)==1){paste(params$stage, " stage",sep="")}`}. It illustrates 5-, 10-, 15-year survival, 10-year liver- and non-liver-related mortality, and 10-year decompansated cirhosis, hepatocellular carcinoma risks.
+\end{tcolorbox}
+\end{center}
+\end{minipage}
+
+
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+  # knitr::opts_chunk$set(fig.width=10, fig.height=4) 
+#data=read.csv("data/All_results_combined_NN_removed.csv",stringsAsFactors = T)#Data file, subject to changes
+data=read.csv("data/concatenated_input_data.csv",stringsAsFactors = T)#Data file, subject to changes
+data_15=data[data$Year<16,]#This is to limit the analyses to the first 15 years
+data_15[,6:13]=data_15[,6:13]*100
+measure=colnames(data_15)[5:ncol(data_15)]#this gets the colnames (outcomes) from the csv header 
+measure_mort=measure[c(7,8,9)]
+measure_ao=measure[c(2,3)]
+measure_inc=measure[c(5,6)]
+#this gets the name of the conditions (NASh, NAFL,..) and fiborsis stages (F0,..,F4)- sorted in the prefer#3c4d68 order (sorting is manual and hard coded)data$
+stages=unique(data$Stage)
+stages=stages[sort.list(stages, method = "shell")]
+stages=stages[c(6,1:5)]
+my_colors=c("#375E97","#FB6542","#FFBB00","#3F681C","#003B46","#F4CC70")
+my_colors2 <- c("#A4243B","#D8C99B","#D8973C", "#BD632F","#95A0A5", "#273E47")#brewer.pal(9,"Blues")[4:10]#"#4E6168"
+my_colors3<-c('#FFFFFF','#E6EEF0','#C3D1DA','#A5BACB','#7E98A9','#476A7E','#274456')
+my_textColor<-c("white","black","white","white","white","white")
+my_colors_comp=c("#BCBABE","#A1D6E2","#1995AD")
+stage_mark=paste(params$stage,collapse = "-")
+
+```
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+  figpath<-tempfile("plot_", fileext = ".pdf")
+  pdf(figpath, width = 12, height = 5)
+    plot_data=data_15[data_15$Stage%in%params$stage&data_15$Age==params$age&data_15$Gender==params$gender,]
+    data_15$Stage<-factor(data_15$Stage, stages)
+    plot_data$Stage <- factor(plot_data$Stage, stages)
+    names(my_colors2)<-levels(factor(data_15$Stage))
+    names(my_textColor)<-levels(factor(data_15$Stage))
+    
+    # plot_data=data_15[data_15$Stage%in%params$stage&data_15$Age==params$age&data_15$Gender==params$gender,]
+    # data_15$Stage<-factor(data_15$Stage, stages)
+    # plot_data$Stage <- factor(plot_data$Stage, stages)
+    # names(my_colors2)<-levels(factor(data_15$Stage))
+    #plot_data<-plot_data[plot_data$Year%in% c(5,10,15),]
+    #plot_data$Year[plot_data$Year==5]="5-Year"
+    #plot_data$Year[plot_data$Year==10]="10-Year"
+    #plot_data$Year[plot_data$Year==15]="15-Year"
+    #plot_data$Year <- factor(plot_data$Year,levels = c("5-Year","10-Year","15-Year"))
+    
+    psurv<-ggplot(plot_data,aes_string(x = "Year", y ="Overall_Survival", colour="Stage"))+#guides(guide_legend(ncol = 3))+
+      ggtitle("Survival")+
+      theme(
+        # Theme definition,
+        # change legend border color,
+        # legend position, legend font size, panel bg color,
+        # axis title font size, axis thick marks font size,
+        # remove x-axis gridlines (maj and min),
+        # change y-axis gridlines  (maj and min), remove plot bg
+        plot.title = element_text(hjust = 0.5,size = 17,face="plain"),
+        legend.key = element_rect(fill = alpha("blue",0.0)),
+        legend.position = 'bottom',
+        legend.text=element_text(size=14),
+        legend.background=element_rect(fill = alpha("blue",0.0)),
+        legend.title = element_blank(),
+        panel.background=element_blank(),#element_rect(fill="white",colour=NA),
+        axis.title = element_text(size=18),
+        axis.text= element_text(size=18),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.y = element_line(size = 0.4, linetype = 'dashed',
+                                          colour = alpha("black",0.2)),
+        panel.grid.minor.y = element_line(size = 0.15, linetype = 'dashed',
+                                          colour = alpha("black",0.1)),
+        plot.background =  element_rect(fill = NA,colour = NA, size = 0.5)
+      )+
+      theme(axis.line.x = element_line(color="black", size = .21),
+            axis.line.y = element_line(color="black", size = .21))+
+      geom_line(size=1,alpha=1.0)+#line thickness and alpha
+      xlab("Year")+ylab("Survival rate (%)")+#Labels of x and y axes
+      scale_x_continuous(expand=c(0,0),limits=c(0,15))+#set x-axis limits to 0-15
+      scale_y_continuous(expand=c(0,0),limits=c(0,100))+
+      scale_color_manual(values = my_colors2)+
+      guides(color=guide_legend(nrow=1))+
+      labs(colour="Stage: ")
+    
+  plot_data<-plot_data[plot_data$Year==10,]
+    
+  x_pos=c(1,2,3,1,2,3)
+  y_pos=c(2,2,2,1,1,1)
+  x_pos=x_pos[1:nrow(plot_data)]
+  y_pos=y_pos[1:nrow(plot_data)]
+  p2<-ggplot(plot_data)+
+    ggtitle("10-Year Survival")+
+    geom_rect(aes(xmin=x_pos-0.4,xmax=x_pos+0.4,ymin=y_pos-0.4,ymax=y_pos+0.4,fill=Stage))+
+    #geom_text(aes(x=x_pos,y=y_pos,label=gsub(" ","_",measure_inc[1])))
+    geom_text(size= 6,
+                  aes(x = x_pos,y=y_pos,colour=Stage,
+                      label=paste0(Stage," \n ", round(Overall_Survival,0),'%',sep="")))+
+      scale_fill_manual(values = my_colors2,guide=FALSE)+
+      scale_color_manual(values = my_textColor,guide=FALSE)+
+     theme(
+       plot.title = element_text(hjust = 0.5,size = 17,face="plain"),
+       axis.title=element_blank(),
+           plot.margin = margin(t = 0, r = 0, b = 4, l = 0, unit = "pt"),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        axis.line=element_blank()
+        )+
+    ylim(-0.5,2.4)+xlim(0.6,3.4)
+  
+    plot_grid(psurv, p2,rel_widths = c(2, 1))
+    
+# 
+#     
+#     
+#     #ggplot(plot_data,aes_string(x = "Year", y =gsub(" ","_",measure_inc[1]), colour="Stage"))+guides(colour = guide_legend(nrow = 1))+
+#       ggplot(data = plot_data,aes(y = Overall_Survival,x=Year,color = Stage))+
+#       # geom_bar(aes(y = Overall_Survival,x=Year,fill = Stage,group=Stage), position = "dodge",
+#       #         stat="identity",width = 0.8)+
+#         # geom_text(size= 5,
+#         #           aes(y = Overall_Survival,x=Year,group=Stage,
+#         #               label=paste0(round(Overall_Survival,0),'%',sep="")
+#         #               ),
+#         #           vjust=-.6,
+#         #           position = position_dodge(width=0.8))+
+#         #scale_fill_manual(labels=gsub("Death", "Mortality",gsub("_"," ",measure_mort)), values = rep(alpha(my_colors3[c(6,5,4)],1),9))+
+#       ggtitle(toupper("Survival"))+
+#       theme(
+#         # Theme definition,
+#         # change legend border color,
+#         # legend position, legend font size, panel bg color,
+#         # axis title font size, axis thick marks font size,
+#         # remove x-axis gridlines (maj and min),
+#         # change y-axis gridlines  (maj and min), remove plot bg
+#         plot.title = element_text(hjust = 0.5,size = 16,face="plain"),
+#         legend.key = element_rect(fill = alpha("blue",0.0)),
+#         legend.position = 'bottom',
+#         legend.text=element_text(size=16),
+#         legend.background=element_rect(fill = alpha("blue",0.0)),
+#         legend.title = element_blank(),
+#         #panel.background=element_rect(fill="white",colour=NA),
+#         axis.title = element_text(size=18),
+#         axis.text= element_text(size=18),
+#         panel.grid.major.x = element_blank(),
+#         panel.grid.minor.x = element_blank(),
+#         panel.grid.major.y = element_blank(),
+#         panel.grid.minor.y = element_blank(),
+#         plot.background =  element_rect(fill="transparent"),
+#         panel.background= element_rect(fill = "transparent")
+#       )+
+#       theme(axis.line.x = element_line(color="black", size = .21),
+#             axis.line.y = element_line(color="black", size = .21))+
+#       geom_line(size=1,alpha=1.0)+#line thickness and alpha
+#       #xlab("Year")+
+#       ylab("Survival rate (%)")+#Labels of x and y axes
+#       #xlim(4,15)+#set x-axis limits to 0-15
+#       ylim(0,100)+
+#       scale_color_manual(labels=names(my_colors2), values = my_colors2)+
+#       labs(colour="Stage: ")#legend title | legend is based on different colors
+#     
+    
+  invisible(dev.off())
+```
+
+
+```{r, echo=FALSE,results='hide',fig.keep='all'}
+  # knitr::opts_chunk$set(fig.width=10, fig.height=4) 
+  figpathBar<-tempfile("plotbar_", fileext = ".pdf")
+  pdf(figpathBar, width = 12, height = 10)
+  
+ #filter the data to plot
+
+Stage=params$stage
+
+set=params$stage
+
+plot_dataDC=data_15[data_15$Stage%in%set&data_15$Year==10&data_15$Age==params$age&data_15$Gender==params$gender,c("Stage","Decompensated_Cirrhosis")]
+plot_dataDC$Stage <- factor(plot_dataDC$Stage, stages)
+plot_dataHCC=data_15[data_15$Stage%in%set&data_15$Year==10&data_15$Age==params$age&data_15$Gender==params$gender,c("Stage","Hepatocellular_Carcinoma")]
+plot_dataHCC$Stage <- factor(plot_dataHCC$Stage, stages)
+plot_dataLRD=data_15[data_15$Stage%in%set&data_15$Year==10&data_15$Age==params$age&data_15$Gender==params$gender,c("Stage","Liver_Related_Death")]
+plot_dataLRD$Stage <- factor(plot_dataLRD$Stage, stages)
+plot_dataNLRD=data_15[data_15$Stage%in%set&data_15$Year==10&data_15$Age==params$age&data_15$Gender==params$gender,c("Stage","Nonliver_Related_Death")]
+plot_dataNLRD$Stage <- factor(plot_dataNLRD$Stage, stages)
+
+p1<-ggplot(plot_dataDC,aes(x=Stage,y=Decompensated_Cirrhosis,fill=Stage))+#guides(colour = guide_legend(nrow = 3))+
+geom_bar(stat = "identity")+
+  theme(plot.margin=unit(c(10,15.5,40,25.5),"pt"),
+        plot.title = element_text(hjust = 0.5,size = 16,face="plain"), axis.title = element_text(size=18), axis.text = element_text(size=18))+
+  geom_text(size= 5, aes(label=paste0(round(Decompensated_Cirrhosis,0),'%',sep="")),vjust=-.6)+
+scale_fill_manual(values = my_colors2)+guides(fill=FALSE)+
+  ggtitle("10-Year Decompensated Cirrhosis")+ylab("Cumulative rate (%)")+xlab("NAFLD Stage")+
+      scale_y_continuous(expand = c(0,0),limits = c(0,max(plot_dataDC$Decompensated_Cirrhosis,plot_dataHCC$Hepatocellular_Carcinoma)*1.10))
+#+ylim(0,max(plot_dataDC$Decompensated_Cirrhosis,plot_dataHCC$Hepatocellular_Carcinoma)*1.10)
+p2<-ggplot(plot_dataHCC,aes(x=Stage,y=Hepatocellular_Carcinoma,fill=Stage))+#guides(colour = guide_legend(nrow = 3))+
+  geom_bar(stat = "identity")+
+  theme(plot.margin=unit(c(10,15.5,40,25.5),"pt"),
+        plot.title = element_text(hjust = 0.5,size = 16,face="plain"), axis.title = element_text(size=18),axis.text=element_text(size=18))+
+  geom_text(size= 5, aes(label=paste0(round(Hepatocellular_Carcinoma,0),'%',sep="")),vjust=-.6)+
+  scale_fill_manual(guide=FALSE,values = my_colors2)+guides(fill=FALSE)+
+  ggtitle("10-Year Hepatocellular Carcinoma Risk")+ylab("Cumulative rate (%)")+xlab("NAFLD Stage")+
+      scale_y_continuous(expand = c(0,0),limits = c(0,max(plot_dataDC$Decompensated_Cirrhosis,plot_dataHCC$Hepatocellular_Carcinoma)*1.10))
+
+p3<-ggplot(plot_dataLRD,aes(x=Stage,y=Liver_Related_Death,fill=Stage))+#guides(colour = guide_legend(nrow = 3))+
+  geom_bar(stat = "identity")+
+  theme(plot.margin=unit(c(40,15.5,10,25.5),"pt"),
+        plot.title = element_text(hjust = 0.5,size = 16,face="plain"),  axis.title = element_text(size=18),axis.text=element_text(size=18))+
+  geom_text(size= 5, aes(label=paste0(round(Liver_Related_Death,0),'%',sep="")),vjust=-.6)+
+  scale_fill_manual(guide=FALSE,values = my_colors2)+guides(fill=FALSE)+
+  ggtitle("10-Year Liver Related Mortality")+xlab("NAFLD Stage")+ylab("Cumulative rate (%)")+scale_y_continuous(expand = c(0,0),limits = c(0,max(plot_dataNLRD$Nonliver_Related_Death,plot_dataLRD$Liver_Related_Death)*1.10))
+
+p4<-ggplot(plot_dataNLRD,aes(x=Stage,y=Nonliver_Related_Death,fill=Stage))+#guides(colour = guide_legend(nrow = 3))+
+  geom_bar(stat = "identity")+
+  theme(plot.margin=unit(c(40,15.5,10,25.5),"pt"),
+        plot.title = element_text(hjust = 0.5,size = 16,face="plain"), axis.title = element_text(size=18),axis.text = element_text(size=18))+
+  geom_text(size= 5, aes(label=paste0(round(Nonliver_Related_Death,0),'%',sep="")),vjust=-.6)+
+  scale_fill_manual(guide=FALSE,values = my_colors2)+guides(fill=FALSE)+
+  ggtitle("10-Year Non-Liver Related Mortality")+xlab("NAFLD Stage")+ylab("Cumulative rate (%)")+scale_y_continuous(expand = c(0,0),limits = c(0,max(plot_dataNLRD$Nonliver_Related_Death,plot_dataLRD$Liver_Related_Death)*1.10))
+plot_grid(p3,p4,p1, p2)
+  invisible(dev.off())
+```
+
+\begin{minipage}[t]{\textwidth}
+  
+    
+    \begin{tcolorbox}[colback=autumn_foliage!5,arc=5pt,width=1\textwidth, height=.70\textheight]
+      \begin{figure}[H]
+        \begin{center}
+          \vskip -10pt
+          \includegraphics[width=0.9\textwidth]{`r gsub("\\","/",figpath, fixed=T)`}\\
+        \end{center}
+      \end{figure}
+          \vskip -30pt
+    \begin{figure}[H]
+        \begin{center}
+            \vskip -10pt
+          \includegraphics[width=0.9\textwidth]{`r gsub("\\","/",figpathBar, fixed=T)`}\\
+        \end{center}
+      \end{figure}
+    \vskip 2.5pt
+  \end{tcolorbox}
+
+\end{minipage}
+\vskip 20pt
+\begin{minipage}[t]{.32\textwidth}
+  \vspace{0pt}
+  \scriptsize{
+  Contact: Jagpreet Chhatwal, PhD\\
+  MGH Inst.~for Tech.~Assessment\\
+  Harvard Medical School\\
+  101 Merrimac St.~STE 1010\\
+  Boston, MA 02114 United States\\
+  \href{mailto:nafldsimulator@mgh-ita.org}{\color{blue}\underline{\smash{nafldsimulator@mgh-ita.org}}}}
+\end{minipage}
+\begin{minipage}[t]{.32\textwidth}
+  \vspace{0pt}
+  \noindent\includegraphics[height=25pt]{mgh-logo.png}\vskip 5pt
+  \hspace*{0.6pt}\includegraphics[height=25pt]{hms-logo.png}
+\end{minipage}
+\begin{minipage}[t]{.14\textwidth}
+  \vspace{0pt}
+  \includegraphics[height=40.1pt]{aasld-logo.png}
+\end{minipage}
+\begin{minipage}[t]{.20\textwidth}
+  \vspace{0pt}
+  \scriptsize{We acknowledge the support of the American Association for the Study of Liver Diseases in the development of the NAFLD Natural History Simulator}\\
+  \scriptsize{\color{blue}\underline{\smash{\url{www.nafldsimulator.org}}}}
+\end{minipage}
+
+\pagebreak
